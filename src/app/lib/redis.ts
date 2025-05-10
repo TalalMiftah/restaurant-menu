@@ -1,6 +1,6 @@
 import Redis from 'ioredis';
 
-// Initialize Redis client with fallback
+// Initialize Redis client with fallback to in-memory cache in development
 let redis: Redis | null = null;
 
 // Only attempt Redis connection in production
@@ -11,16 +11,20 @@ if (process.env.NODE_ENV === 'production') {
     console.warn('Redis connection failed, running in fallback mode:', error);
   }
 } else {
+  // In development, use in-memory cache for simplicity
   console.log('Development mode: Using in-memory cache');
 }
 
 // Cache TTL in seconds (1 hour)
 const CACHE_TTL = 3600;
 
-// In-memory cache fallback
+// In-memory cache fallback (used in development or if Redis is unavailable)
 const memoryCache = new Map<string, { data: any; expiry: number }>();
 
-// Utility function to get data from cache
+/**
+ * Try to get data from Redis or in-memory cache.
+ * Returns null if not found or expired.
+ */
 export async function getFromCache<T>(key: string): Promise<T | null> {
   try {
     if (redis) {
@@ -40,7 +44,9 @@ export async function getFromCache<T>(key: string): Promise<T | null> {
   }
 }
 
-// Utility function to set data in cache
+/**
+ * Store data in Redis or in-memory cache with TTL.
+ */
 export async function setInCache<T>(key: string, data: T): Promise<void> {
   try {
     if (redis) {
@@ -57,7 +63,9 @@ export async function setInCache<T>(key: string, data: T): Promise<void> {
   }
 }
 
-// Utility function to invalidate cache
+/**
+ * Invalidate (delete) a cache entry from Redis or in-memory cache.
+ */
 export async function invalidateCache(key: string): Promise<void> {
   try {
     if (redis) {
@@ -70,7 +78,9 @@ export async function invalidateCache(key: string): Promise<void> {
   }
 }
 
-// Generate cache key for API endpoints
+/**
+ * Generate a consistent cache key for API endpoints and parameters.
+ */
 export function generateCacheKey(endpoint: string, params?: Record<string, string>): string {
   const baseKey = `menu:${endpoint}`;
   if (!params) return baseKey;

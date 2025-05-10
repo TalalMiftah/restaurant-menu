@@ -11,10 +11,11 @@ export async function GET(
   const cacheKey = generateCacheKey(`items/${params.categoryId}`);
 
   try {
-    // Try to get from cache first
+    // 1. Try to get items from cache (Redis or in-memory)
     const cachedItems = await getFromCache<MenuItem[]>(cacheKey);
     if (cachedItems) {
       const endTime = performance.now();
+      // 2. If found in cache, return cached data with cacheHit=true
       return NextResponse.json<ApiResponse<MenuItem[]>>({
         data: cachedItems,
         metrics: {
@@ -26,13 +27,14 @@ export async function GET(
       });
     }
 
-    // If not in cache, get from mock data
+    // 3. If not in cache, fetch from data source (mock data)
     const items = getMenuItems(params.categoryId);
     const endTime = performance.now();
 
-    // Store in cache for future requests
+    // 4. Store the fresh data in cache for future requests
     await setInCache(cacheKey, items);
 
+    // 5. Return the fresh data with cacheHit=false
     return NextResponse.json<ApiResponse<MenuItem[]>>({
       data: items,
       metrics: {

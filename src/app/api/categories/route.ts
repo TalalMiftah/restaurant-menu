@@ -8,12 +8,13 @@ export async function GET() {
   const cacheKey = generateCacheKey('categories');
 
   try {
-    // Try to get from cache first
+    // 1. Try to get categories from cache (Redis or in-memory)
     const cachedCategories = await getFromCache<MenuCategory[]>(cacheKey);
     if (cachedCategories) {
       const endTime = performance.now();
+      // 2. If found in cache, return cached data with cacheHit=true
       return NextResponse.json<ApiResponse<MenuCategory[]>>({
-        data: cachedCategories,
+        data: cachedCategories.slice(0, 20),
         metrics: {
           loadTime: endTime - startTime,
           cacheHit: true,
@@ -23,15 +24,16 @@ export async function GET() {
       });
     }
 
-    // If not in cache, get from mock data
+    // 3. If not in cache, fetch from data source (mock data)
     const categories = getAllCategories();
     const endTime = performance.now();
 
-    // Store in cache for future requests
+    // 4. Store the fresh data in cache for future requests
     await setInCache(cacheKey, categories);
 
+    // 5. Return the fresh data with cacheHit=false
     return NextResponse.json<ApiResponse<MenuCategory[]>>({
-      data: categories,
+      data: categories.slice(0, 20),
       metrics: {
         loadTime: endTime - startTime,
         cacheHit: false,
